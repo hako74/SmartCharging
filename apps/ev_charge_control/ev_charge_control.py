@@ -53,12 +53,12 @@ charge_ev_when_cheepest:
     debug: yes
 """
 
-VERSION = "0.54"
+VERSION = "0.54.1"
 
 # Store all attributes every day to disk
 STORE_TO_FILE_EVERY = 60 * 60 * 24
 
-DELAY_AFTER_STATE_CHANGE = 2.0
+DELAY_AFTER_STATE_CHANGE = 30.0
 MAX_TIME_FOR_WORKER_TO_SLEEP = 3600  # 1 hour
 RETRY_AFTER_FAILURE = 60  # 1 minute
 
@@ -423,6 +423,8 @@ class SmartCharging(hass.Hass):
             self.status_attributes["reason"] = "EV is charged"
             self.status_attributes["charge_time_left"] = self.format_time(0)
             self.update_status_entity()
+            # Just in case we charged to little
+            self.start_charging()
             return True
 
         if self.charge_time_needed is not None:
