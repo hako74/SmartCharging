@@ -27,6 +27,7 @@ charging_state:             M: Sensor to read charging state from
 charging_state_stopped:     O: String that indicate not charging
 charging_state_charging:    O: String that indicate charging
 charging_state_complete:    O: String that indicate charging complete
+charging_state_disconnected: O: String that indicate cable is disconnected
 device_tracker:             O: Sensor indicating if EV is home
 time_left:                  M: Time left in hours (float) entity_id[,attribute]
 
@@ -46,6 +47,7 @@ charge_ev_when_cheepest:
     charging_state_stopped: Stopped
     charging_state_charging: Charging
     charging_state_complete: Complete
+    charging_state_disconnected: Disconnected
     device_tracker: device_tracker.model_3_location_tracker
     time_left: sensor.model_3_charging_rate_sensor,time_left
     debug: yes
@@ -135,6 +137,9 @@ class SmartCharging(hass.Hass):
         ).lower()
         self.status_stopped = self.get_config_value(
             "charging_state_stopped", "stopped"
+        ).lower()
+        self.status_disconnected = self.get_config_value(
+            "charging_state_disconnected", "disconnected"
         ).lower()
 
         self.setup_listener("switch." + self.name + "_active")
@@ -350,7 +355,7 @@ class SmartCharging(hass.Hass):
 
         self.schedule_worker(sleep_time)
 
-        self.info(
+        self.log(
             f"worker: Done for now. Will run again in {sleep_time} seconds..."
         )
 
@@ -398,6 +403,14 @@ class SmartCharging(hass.Hass):
             return True
 
         cs = cs.lower()
+        if cs == self.status_disconnected:
+            self.debug("Charging cable disconnected")
+            self.error(f"Charging cable disconnected")
+            self.status_state = "inactive"
+            self.status_attributes["reason"] = "Charging cable disconnected"
+            self.update_status_entity()
+            return True
+
         tl = self.get_entity_value(self.args["time_left"])
 
         self.debug(f"Current state is: {cs}, time left: {tl}")
